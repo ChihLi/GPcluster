@@ -1,0 +1,19 @@
+Package: GPcluster
+Type: Package
+Title: Clustered Gaussian Process
+Version: 0.1
+Author: Chih-Li Sung
+Maintainer: Chih-Li Sung <iamdfchile@gmail.com>
+Description:
+    Allows the estimation and prediction for a clustered Gaussian process model, which can deal with the nonstationarity issue and computational issue for a standard Gaussian process model. The estimation methods for the unknown parameters are based on a stochastic EM algorithm. More details can be seen in Sung et al (2019) <arXiv:1911.04602>.
+License: GPL-2 | GPL-3
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.0.2
+Depends:
+    R (>= 3.5.1)
+Imports:
+    mlegp,
+    laGP,
+    nnet,
+    foreach
