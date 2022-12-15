@@ -19,6 +19,7 @@
 }
 \value{
 \item{yhat}{a vector displaying predicted responses at locations \code{xnew}.}
+\item{s2}{a vector displaying predicted variances at locations \code{xnew}.}
 \item{LCL}{a vector with length \code{n_new} displaying lower bound of predictive confidence intervals at locations \code{xnew}.}
 \item{UCL}{a vector with length \code{n_new} displaying upper bound of predictive confidence intervals at locations \code{xnew}.}
 }

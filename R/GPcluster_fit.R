@@ -9,7 +9,7 @@
 #' @param nugget a positive value specifying the nugget for fitting a Gaussian process model. The default is 1e-6.
 #' @param gfun a character string specifying the latent class distribution of the cluster assignment. It can be "logistic" for multinomial logistric regression, "lda" for linear discriminant analysis, and "qda" for quadratic discriminant analysis.
 #' @param parallel logical. If \code{TRUE}, apply function in parallel in \code{ldply} using parallel backend provided by foreach.
-#' @param iter_max a positive integer specifying the maximum numbers of iterations in the stochastic EM algorithm. The default is 100.
+#' @param iter_max a positive integer specifying the maximum numbers of iterations in the stochastic EM algorithm. The default is 10.
 #' @param save.loocvpred logical.  If \code{TRUE}, the LOOCV predictions will be saved and returned.
 #' @param verbose logical. If \code{TRUE}, additional diagnostics are printed.
 #' @param nstart a positive integer specifying how many random initializations are performed. The default is 1.
@@ -135,7 +135,7 @@
 #'
 
 
-GPcluster_fit <- function(X, Y, K = 10, n_max = 200, nugget = 1e-6, gfun = c("logistic", "lda", "qda")[1], parallel = FALSE, iter_max = 100, save.loocvpred = FALSE, verbose = FALSE, nstart = 1){
+GPcluster_fit <- function(X, Y, K = 10, n_max = 200, nugget = 1e-6, gfun = c("logistic", "lda", "qda")[1], parallel = FALSE, iter_max = 10, save.loocvpred = FALSE, verbose = FALSE, nstart = 1){
 
   ### setting
   if(parallel){

@@ -12,7 +12,7 @@ GPcluster_fit(
   nugget = 1e-06,
   gfun = c("logistic", "lda", "qda")[1],
   parallel = FALSE,
-  iter_max = 100,
+  iter_max = 10,
   save.loocvpred = FALSE,
   verbose = FALSE,
   nstart = 1
@@ -33,7 +33,7 @@ GPcluster_fit(
 
 \item{parallel}{logical. If \code{TRUE}, apply function in parallel in \code{ldply} using parallel backend provided by foreach.}
 
-\item{iter_max}{a positive integer specifying the maximum numbers of iterations in the stochastic EM algorithm. The default is 100.}
+\item{iter_max}{a positive integer specifying the maximum numbers of iterations in the stochastic EM algorithm. The default is 10.}
 
 \item{save.loocvpred}{logical.  If \code{TRUE}, the LOOCV predictions will be saved and returned.}
 
