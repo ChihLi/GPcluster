@@ -9,6 +9,7 @@
 #' @param parallel logical. If \code{TRUE}, apply function in parallel in \code{ldply} using parallel backend provided by foreach.
 #' @return
 #' \item{yhat}{a vector displaying predicted responses at locations \code{xnew}.}
+#' \item{s2}{a vector displaying predicted variances at locations \code{xnew}.}
 #' \item{LCL}{a vector with length \code{n_new} displaying lower bound of predictive confidence intervals at locations \code{xnew}.}
 #' \item{UCL}{a vector with length \code{n_new} displaying upper bound of predictive confidence intervals at locations \code{xnew}.}
 #'
@@ -156,20 +157,20 @@ predict.GPcluster <- function(object, xnew, conf.level = 0.95, conf.out = TRUE, 
     gfun.prob <- predict(gfun.model, newdata = xnew)$posterior
   }else if(gfun == "qda"){
     gfun.prob <- predict(gfun.model, newdata = xnew)$posterior
-  # }else if(gfun == "bagging"){    # under development
-  #   # colnames(xnew) <- attr(gfun.model$terms, "term.labels")
-  #   gfun.prob <- predict(gfun.model, newdata = xnew, type = "prob")
-  # }else if(gfun == "forest"){
-  #   # colnames(xnew) <- attr(gfun.model$terms, "term.labels")
-  #   gfun.prob <- predict(gfun.model, newdata = xnew, type = "prob")
-  # }else if(gfun == "gp"){
-  #   gfun.prob <- predict(gfun.model, newdata = xnew, type = "probabilities")
-  # }else if(gfun == "adaboost"){
-  #   gfun.prob <- predict(gfun.model, newdata = xnew)$prob
-  # }else if(gfun == "constant"){
-  #   gfun.prob <- matrix(1/K, ncol = K, nrow = nrow(xnew))
-  # }else if(gfun == "forest.SRC"){
-  #   gfun.prob <- predict(gfun.model, newdata = xnew)$predicted
+    # }else if(gfun == "bagging"){    # under development
+    #   # colnames(xnew) <- attr(gfun.model$terms, "term.labels")
+    #   gfun.prob <- predict(gfun.model, newdata = xnew, type = "prob")
+    # }else if(gfun == "forest"){
+    #   # colnames(xnew) <- attr(gfun.model$terms, "term.labels")
+    #   gfun.prob <- predict(gfun.model, newdata = xnew, type = "prob")
+    # }else if(gfun == "gp"){
+    #   gfun.prob <- predict(gfun.model, newdata = xnew, type = "probabilities")
+    # }else if(gfun == "adaboost"){
+    #   gfun.prob <- predict(gfun.model, newdata = xnew)$prob
+    # }else if(gfun == "constant"){
+    #   gfun.prob <- matrix(1/K, ncol = K, nrow = nrow(xnew))
+    # }else if(gfun == "forest.SRC"){
+    #   gfun.prob <- predict(gfun.model, newdata = xnew)$predicted
   }
 
   if(nrow(xnew) == 1) gfun.prob <- matrix(gfun.prob, nrow = 1)
@@ -183,7 +184,11 @@ predict.GPcluster <- function(object, xnew, conf.level = 0.95, conf.out = TRUE, 
   }else{
     mu.pred <- apply(yhat.m * gfun.prob, 1, sum)
   }
+
+  var.pred <- apply(RMSE.m^2 * gfun.prob, 1, sum) + apply(yhat.m^2 * gfun.prob, 1, sum)
+  var.pred <- var.pred - mu.pred^2
   mu.pred <- mu.pred * c(sd(Y)) + mean(Y)
+  var.pred <- var.pred * c(var(Y))
 
   if(conf.out){
     if(parallel){
@@ -200,9 +205,9 @@ predict.GPcluster <- function(object, xnew, conf.level = 0.95, conf.out = TRUE, 
         return(c(q1,q2))})
     }
     quantile.pred <- quantile.pred * c(sd(Y)) + mean(Y)
-    return(list(yhat = mu.pred, LCL = quantile.pred[1,], UCL = quantile.pred[2,]))
+    return(list(yhat = mu.pred, s2=var.pred, LCL = quantile.pred[1,], UCL = quantile.pred[2,]))
   }else{
-    return(mu.pred)
+    return(list(yhat= mu.pred, s2=var.pred))
   }
 
 
