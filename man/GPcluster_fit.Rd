@@ -19,21 +19,29 @@ GPcluster_fit(
 )
 }
 \arguments{
-\item{X}{a design matrix with dimension \code{n} by \code{d}.}
+\item{X}{a finite numeric design matrix with dimension \code{n} by \code{d},
+a numeric data frame, or a vector for one-dimensional inputs.}
 
-\item{Y}{a response vector of size \code{n}.}
+\item{Y}{a finite, nonconstant numeric response vector of size \code{n}.}
 
-\item{K}{a positive integer specifying number of clusters.}
+\item{K}{a positive integer specifying the number of clusters, or a
+vector of candidate integers. For multiple candidates, the model with the
+smallest LOOCV root mean squared error is returned.}
 
 \item{n_max}{a positive integer specifying the maximum number of observations in each cluster. The default is 200.}
 
-\item{nugget}{a positive value specifying the nugget for fitting a Gaussian process model. The default is 1e-6.}
+\item{nugget}{a nonnegative scalar fixing the nugget variance on the globally
+standardized response scale. The default is 1e-6. Set to \code{NULL}
+to estimate a separate nugget in each cluster jointly with its correlation
+parameters using \pkg{mlegp}. The starting value is one percent of the
+within-cluster response variance, with a minimum starting value of 1e-6;
+this minimum is not a lower bound on the estimate.}
 
-\item{gfun}{a character string specifying the latent class distribution of the cluster assignment. It can be "logistic" for multinomial logistric regression, "lda" for linear discriminant analysis, and "qda" for quadratic discriminant analysis.}
+\item{gfun}{a character string specifying the latent class distribution of the cluster assignment. It can be "logistic" for multinomial logistic regression, "lda" for linear discriminant analysis, and "qda" for quadratic discriminant analysis.}
 
-\item{parallel}{logical. If \code{TRUE}, apply function in parallel in \code{ldply} using parallel backend provided by foreach.}
+\item{parallel}{logical. If \code{TRUE}, use a parallel backend registered with \pkg{foreach}.}
 
-\item{iter_max}{a positive integer specifying the maximum numbers of iterations in the stochastic EM algorithm. The default is 10.}
+\item{iter_max}{a nonnegative integer specifying the maximum numbers of iterations in the stochastic EM algorithm. The default is 10.}
 
 \item{save.loocvpred}{logical.  If \code{TRUE}, the LOOCV predictions will be saved and returned.}
 
@@ -46,8 +54,12 @@ GPcluster_fit(
 \item{Y}{data \code{Y}.}
 \item{Z}{cluster assignments.}
 \item{P}{the set of indices of the observations in each cluster.}
-\item{K}{\code{K}.}
-\item{LOOCV}{Leave-one-out cross-validation of each iteration.}
+\item{K}{the number of clusters in the returned model.}
+\item{LOOCV}{LOOCV root mean squared errors for the winning initialization
+of the returned model, including the initial fit.}
+\item{K_selection}{For a vector of candidates, a data frame containing each
+candidate \code{K}, its minimum \code{LOOCV}, and a logical \code{selected}
+indicator. Absent for a scalar \code{K}.}
 \item{ypred.loocv}{If \code{save.loocvpred} is \code{TRUE}, then it returns the LOOCV predictions, otherwise it returns \code{NULL}.}
 \item{nugget}{\code{nugget}.}
 \item{gfun}{\code{gfun}.}
@@ -60,103 +72,33 @@ The function performs fitting procedure for a clustered Gaussian process model.
 }
 \details{
 A clustered Gaussian process model segments the input data into multiple clusters, in each of which a Gaussian process is performed.
-The unknown parameters are estimated by a stochastic EM algorithm, where \code{iter_max} can assign the number of iterations in the algorithm. The function also returns the LOOCV error in each iteration, which can assess the prediction performance. The iteration with minimum LOOCV will be selected as the final assignment. More details can be seen in Sung et al. (2019).
+The unknown parameters are estimated by a stochastic EM algorithm, where \code{iter_max} can assign the number of iterations in the algorithm. The function also returns the LOOCV error in each iteration, which can assess the prediction performance. The iteration with minimum LOOCV will be selected as the final assignment. More details can be seen in Sung et al. (2023), \doi{10.5705/ss.202020.0456}.
+
+Candidate values are sorted and deduplicated before fitting. Exact ties select
+the smaller number of clusters. Each candidate uses the supplied fitting
+options, including \code{nstart}. Selection uses the existing LOOCV diagnostic
+(with fitted partitions and model parameters), not a full refit of the
+clustering procedure for every held-out observation. Set a seed before fitting
+for reproducibility. Candidate fitting errors stop selection and identify the
+failing value. In a candidate search, every value must satisfy
+\code{K * n_max >= length(Y)}; candidates are not silently increased.
+
+The existing minimum cluster size is \code{3 * ncol(X)}. Infeasible size
+constraints are rejected before fitting. Initial partitions are repaired by
+transferring observations from oversized or sufficiently large clusters,
+choosing transfers by distance to the destination center. A single cluster
+bypasses the classification model and provides a standard GP baseline.
 }
 \examples{
-\dontrun{
-
-library(GPcluster)
-##### Gramacy and Lee (2009)
-data.df <- read.csv(system.file("extdata", "GL2009.csv", package = "GPcluster"))
-X <- data.df$X
-Y <- data.df$Y
-X.test <- matrix(sort(c(X, seq(0,20,0.1))), ncol = 1)
-
 set.seed(1)
-fit.object <- GPcluster_fit(matrix(X, ncol = 1), Y, K = 2, iter_max = 100)
-pred.out <- predict(fit.object, X.test, conf.level = 0.95)
-yhat <- pred.out$yhat
-plot(X, Y, ylim = c(-1.5,1.5), xlim = c(0,20), xlab = "x", ylab = "y", type = "n")
-polygon(c(rev(X.test[,1]), X.test[,1]), c(rev(pred.out$UCL), pred.out$LCL), col = 'grey80', border = NA)
-
-lines(X.test[,1], yhat, col = 4, lwd = 2, lty = 2)
-curve(sin(pi*x/5) + 0.2*cos(4*pi*x/5), from = 0, to = 10, add = TRUE, lwd = 1)
-curve(x/10 - 1, from = 10, to = 20, add = TRUE, lwd = 1)
-points(X, Y, cex = 1.5)
-for(i in 1:2) points(X[fit.object$P[[i]]], Y[fit.object$P[[i]]], col = c(2,3)[i], pch = 18, cex = 1.5)
-
-
-#####  Montagna and Tokdar (2016)
-X <- seq(-2,2,length.out = 15)
-Y <- sin(X) + 2*exp(-30*X^2)
-X.test <- seq(-2,2,length.out = 500)
-set.seed(1)
-
-K <- 3
-fit.object <- GPcluster_fit(matrix(X, ncol = 1), Y, K = K, iter_max = 100)
-
-pred.out <- predict(fit.object, X.test, conf.level = 0.95)
-yhat <- pred.out$yhat
-plot(X, Y, ylim = c(-1.2,2), xlim = c(-2,2), type = "n")
-polygon(c(rev(X.test), X.test), c(rev(pred.out$UCL), pred.out$LCL), col = 'grey80', border = NA)
-curve(sin(x) + 2*exp(-30*x^2), from = -2, to = 2, add = TRUE, lwd = 1)
-lines(X.test, yhat, col = 4, lwd = 2, lty = 2)
-points(X, Y, cex = 1.5)
-for(i in 1:K) points(X[fit.object$P[[i]]], Y[fit.object$P[[i]]], col = i+1, pch = 18, cex = 1.5)
-
-#####             Testing function: borehole function                        #####
-#####  Thanks to Sonja Surjanovic and Derek Bingham, Simon Fraser University #####
-borehole <- function(xx)
-{
-  rw <- 0.05  + xx[1] * 0.1
-  r  <- 100   + xx[2] * 49900
-  Tu <- 63070 + xx[3] * 52530
-  Hu <- 990   + xx[4] * 120
-  Tl <- 63.1  + xx[5] * 52.9
-  Hl <- 700   + xx[6] * 120
-  L  <- 1120  + xx[7] * 560
-  Kw <- 9855  + xx[8] * 2190
-
-  frac1 <- 2 * pi * Tu * (Hu-Hl)
-
-  frac2a <- 2*L*Tu / (log(r/rw)*rw^2*Kw)
-  frac2b <- Tu / Tl
-  frac2 <- log(r/rw) * (1+frac2a+frac2b)
-
-  y <- frac1 / frac2
-  return(y)
-}
-
-#####   Training data and testing data   #####
-set.seed(1)
-n <- 1000; n_new <- 10000; d <- 8
-X.train <- matrix(runif(d*n), ncol = d)
-Y.train <- apply(X.train, 1, borehole)
-X.test <- matrix(runif(d*n_new), ncol = d)
-Y.test <- apply(X.test, 1, borehole)
-
-#####   Fitting    #####
-fit.object <- GPcluster_fit(X.train, Y.train, K = 5, iter_max = 5)
-
-#####   Prediction   ######
-Y.pred <- predict(fit.object, X.test)$yhat
-print(sqrt(mean((Y.test - Y.pred)^2)))
-
-#####   borehole function: parallel computing   #####
-library(doParallel)
-library(snowfall)
-sfInit(parallel = TRUE, cpus = 5L) # request 5 CPUs
-cl <- sfGetCluster()
-registerDoParallel(cl)
-
-#' #####   Fitting    #####
-fit.object <- GPcluster_fit(X.train, Y.train, K = 5, iter_max = 5, parallel = TRUE)
-
-#####   Prediction   ######
-Y.pred <- predict(fit.object, X.test, parallel = TRUE)$yhat
-print(sqrt(mean((Y.test - Y.pred)^2)))
-sfStop()
-}
+X <- matrix(seq(-2, 2, length.out = 30), ncol = 1)
+Y <- sin(X[, 1]) + 0.2 * cos(4 * X[, 1])
+fit <- GPcluster_fit(X, Y, K = 2, iter_max = 1)
+pred <- predict(fit, X[c(5, 15, 25), , drop = FALSE])
+pred$yhat
+selected <- GPcluster_fit(X, Y, K = 2:3, iter_max = 1)
+selected$K
+selected$K_selection
 }
 \seealso{
 \code{\link{predict.GPcluster}} for prediction of the clustered Gaussian process model.

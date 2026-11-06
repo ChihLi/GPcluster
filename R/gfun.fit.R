@@ -1,4 +1,4 @@
-gfun.fit <- function(X, Z, K, gfun){
+gfun.fit <- function(X, Z, K, gfun, verbose = FALSE){
 
   fit.data <- data.frame(X, "Z" = factor(Z))
   colnames(fit.data)[1:(ncol(fit.data)-1)] <- paste0("X", 1:(ncol(fit.data)-1))
@@ -6,9 +6,9 @@ gfun.fit <- function(X, Z, K, gfun){
   if(gfun == "logistic"){
     ### multinomial logistic regression model ###
     if(nrow(fit.data) <= 10000){ # fix nnet weight issue
-      out <- nnet::multinom(Z ~ ., data = fit.data, type = "prob")
+      out <- nnet::multinom(Z ~ ., data = fit.data, type = "prob", trace = verbose)
     }else{
-      out <- nnet::multinom(Z ~ ., data = fit.data, type = "prob", MaxNWts = nrow(fit.data))
+      out <- nnet::multinom(Z ~ ., data = fit.data, type = "prob", trace = verbose, MaxNWts = nrow(fit.data))
     }
   }else if(gfun == "lda"){
     ### LDA ###

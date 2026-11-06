@@ -17,6 +17,37 @@ library(devtools)
 install_github("ChihLi/GPcluster")
 ```
 
+To select the number of clusters using the existing LOOCV RMSE diagnostic,
+pass a vector of candidate values:
+
+```r
+set.seed(1)
+fit <- GPcluster_fit(X, Y, K = 1:5, iter_max = 10)
+fit$K             # selected number of clusters
+fit$K_selection   # minimum LOOCV RMSE for each candidate
+pred <- predict(fit, X.test)
+```
+
+Candidates are sorted and deduplicated; exact ties favor smaller K. Each
+candidate uses the supplied `nstart` and other fitting options. Every candidate
+must satisfy `K * n_max >= length(Y)`. A failed fit stops the search with its K
+value in the error message. This criterion uses the package's existing LOOCV
+predictions conditional on fitted partitions and parameters, rather than
+refitting the entire clustering procedure for each held-out observation.
+A scalar `K` continues to fit a single model.
+
+For noisy responses, estimate a separate nugget for each cluster:
+
+```r
+fit <- GPcluster_fit(X, Y, K = 1:5, nugget = NULL)
+vapply(fit$GP.model, function(gp) gp$nugget, numeric(1))
+```
+
+Nuggets are variances on the globally standardized response scale. Multiply an
+estimated nugget by `var(fit$Y)` to express it on the original response scale.
+A numeric `nugget` fixes that variance (default `1e-6`). Estimation uses `mlegp`
+directly, jointly with the correlation parameters; `laGP` is no longer required.
+
 A few examples are given below.
 
 ##### Gramacy and Lee (2009) test function
@@ -158,3 +189,16 @@ sfStop()
 
     ## 
     ## Stopping cluster
+
+## Citation
+
+Sung, C.-L., Haaland, B., Hwang, Y., and Lu, S. (2023).
+A clustered Gaussian process model for computer experiments.
+*Statistica Sinica*, **33**(2), 893–918.
+[doi:10.5705/ss.202020.0456](https://doi.org/10.5705/ss.202020.0456).
+Run `citation("GPcluster")` for the BibTeX entry.
+
+`K = 1` fits a single GP without a classification model. Initial partitions for
+larger K are adjusted to satisfy the existing minimum size (3 times the input
+dimension) and `n_max`. The LOOCV selection score conditions on fitted partitions
+and parameters; use independent test data to assess final predictive performance.
