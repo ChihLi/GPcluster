@@ -1,0 +1,12 @@
+bibentry(
+  bibtype = "Article",
+  title = "A clustered Gaussian process model for computer experiments",
+  author = c(person("Chih-Li", "Sung"), person("Benjamin", "Haaland"),
+             person("Youngdeok", "Hwang"), person("Siyuan", "Lu")),
+  journal = "Statistica Sinica",
+  year = "2023",
+  volume = "33",
+  number = "2",
+  pages = "893--918",
+  doi = "10.5705/ss.202020.0456"
+)

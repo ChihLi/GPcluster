@@ -1,0 +1,5 @@
+^README_files$
+^cran-comments\.md$
+^CRAN-PREPARATION\.md$
+^\.github$
+^\.DS_Store$
